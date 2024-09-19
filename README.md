@@ -45,5 +45,54 @@ That is all we would need to do to grade the homework.add function:
 * [maybe] add the input generator in generators.ml
 
 # How it works:
-TODO
 
+There are a couple layers of abstraction for the main grading logic:
+
+```ocaml
+type test = Test : {
+  apply_hw_fn: unit -> 'output;
+  apply_sol_fn: unit -> 'output;
+} -> test
+```
+This GADT is the first layer of abstraction, it represents a singular test case for a problem. These thunks, are wrapper functions for the homework & solution function and when the thunk is invoked it will invoke the functions with pre-given input.
+
+The main way to create the test case is with these helper functions:
+*abstract: We supply the hw & sol function, and input for these functions when the test suite is called upon*
+```ocaml
+let create_test_fn_arity1 hw_fn sol_fn (arg1) = Test {
+  apply_hw_fn = safe_call (fun () -> hw_fn arg1);
+  apply_sol_fn = safe_call (fun () -> sol_fn arg1);
+}
+
+let create_test_fn_arity2 hw_fn sol_fn (arg1, arg2) = Test {
+  apply_hw_fn = safe_call (fun () -> hw_fn arg1 arg2);
+  apply_sol_fn = safe_call (fun () -> sol_fn arg1 arg2);
+}
+```
+
+Using the test GADT we can now create a test-suite for a given problem we want to create:
+*abstract: For a given function/problem we now have a list of tests for that particular function/problem*
+```ocaml
+type test_suite = {
+  suite_name: string;
+  max_points: int;
+  suite: test list;
+}
+```
+
+Now we can use these abstractions to easily perform the grading with this short function:
+```ocaml
+let grade_question question_num test_suite = 
+  let tests_amt = List.length test_suite.suite in
+  let correct_amt = List.fold_left (fun correct (Test test) -> if test.apply_hw_fn() = test.apply_sol_fn() then correct + 1 else correct) 0 test_suite.suite in
+  let fraction_correct = float_of_int correct_amt /. float_of_int tests_amt in
+  let question_points = int_of_float (float_of_int test_suite.max_points *. fraction_correct) in
+  {
+    name = test_suite.suite_name;
+    score = question_points;
+    maxscore = test_suite.max_points;
+    output = Printf.sprintf "You got %d out of %d questions correct." correct_amt tests_amt;
+  }
+```
+
+Basically we fold over the test cases, see if the homework function's output is equal to the solution function's ouput, and handle accordingly. After this folding we return the results of the suite (how many homework function output's are equal to the solution).
