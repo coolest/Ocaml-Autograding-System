@@ -1,0 +1,86 @@
+#!/bin/bash
+
+HOMEWORK_FILE="hw2.ml"
+SOURCE_DIR="/autograder/source"
+SUBMISSION_DIR="/autograder/submission"
+RESULTS_DIR="/autograder/results"
+RESULTS_FILE="$RESULTS_DIR/results.json"
+MAX_EXECUTION_TIME=60
+
+# Ensure opam environment is active
+eval $(opam env)
+
+function write_error() {
+    local error=$1
+
+    echo "{\"score\": 0, \"output\": \"$error\"}" > "$RESULTS_FILE"
+}
+
+function build() {
+    local output_name=$1
+    local error_file="compile_error.txt"
+    
+    dune build ./$output_name.exe 2>"$error_file"
+
+    if [ $? -ne 0 ]; then
+        local error=$(cat "$error_file")
+        local formatted_error="error on file $output_name: $error"
+        local error_json=$(jq -n \
+            --arg output_name "$output_name" \
+            --arg error "$error" \
+            '{
+                "score": 0,
+                "output": ("error on file " + $output_name + ": " + $error)
+            }')
+        
+        echo "$error_json" > "$RESULTS_FILE"
+
+        rm "$error_file"
+        exit 1
+    fi
+
+    rm "$error_file"
+}
+
+function execute() {
+    local executable=$1
+    local error_file="execution_error.txt"
+    
+    timeout $MAX_EXECUTION_TIME dune exec ./$executable.exe >/dev/null 2>"$error_file"
+
+    local exit_status=$?
+    if [ -s "$error_file" ] || [ $exit_status -eq 124 ]; then
+        local error_output=$(cat "$error_file")
+        local json_output=$(jq -n \
+            --arg error "$error_output" \
+            --arg executable "$executable" \
+            '{
+                score: 0,
+                output: ("error on file " + $executable + ": " + $error)
+            }')
+
+        echo "$json_output" > "$RESULTS_FILE"
+    fi
+    
+    rm "$error_file"
+}
+
+cp "$SUBMISSION_DIR/$HOMEWORK_FILE" "$SOURCE_DIR/$HOMEWORK_FILE" || {
+    write_error "Please make sure your submission is named $HOMEWORK_FILE"
+
+    exit 1
+}
+
+cd "$SOURCE_DIR"
+
+# Move autograder project into current directory
+mv src/*.ml .
+
+# Verify homework submission has correct signature / necessary function definitions
+build "check_hw_definitions"
+execute "check_hw_definitions"
+
+# Perform autograde
+touch "$RESULTS_FILE"
+build "autograder"
+execute "autograder"
