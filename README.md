@@ -1,3 +1,9 @@
+# Introduction
+This is an Ocaml autograding system for gradescope. The setup.sh and run_autograder shell scripts (talked about below) are called automatically on behalf of gradescope. This system is ran on Ubuntu on AWS servers, provided by gradescope. 
+
+This is currently set up for my homework files that need to be graded, but can easily be adjusted to your own homework file by reading the steps below!
+
+
 # Low-level prerequisites
 A setup.sh file will be called automatically and this script will set up things needed to perform the autograde. This includes OPAM, Dune, Yojson, as well as other quality of life commands such as jq. Once these tools are installed, we initialize OPAM and create the dune project in this script. After that is done, we have everything setup for the autograde.
 
