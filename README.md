@@ -1,6 +1,3 @@
-# Ocaml-Autograding-System
- Autograding assignments in Ocaml for gradescope submissions.
-
 # Low-level prerequisites
 A setup.sh file will be called automatically and this script will set up things needed to perform the autograde. This includes OPAM, Dune, Yojson, as well as other quality of life commands such as jq. Once these tools are installed, we initialize OPAM and create the dune project in this script. After that is done, we have everything setup for the autograde.
 
